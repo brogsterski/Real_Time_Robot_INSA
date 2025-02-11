@@ -1,6 +1,6 @@
 # Dumber
 
-Depot du projet de temps reel 4eme année au departement GEI de l'INSA Toulouse.
+Real time programming project for fourth year embedded systems at INSA Toulouse
 
 ## Repertoires
 - hardware : contient les plans pour la partie mecanique du robot et de son chargeur, ainsi que les plans de conception des PCB du robot, du chargeur, de l'adaptateur Xbee pour la raspberry  et les plans des CAP du robot
