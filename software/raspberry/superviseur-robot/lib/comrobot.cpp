@@ -357,19 +357,3 @@ bool ComRobot::VerifyChecksum(string &s) {
         return true;
     } else return false;
 }
-
-
-Message *ComRobot :: GetBattery(){
-    int err;
-    Message * msgSend;
-    Message * msgRcv;
-    Message * msgTmp;
-    
-    if((msgRcv = ComRobot::Write(msgSend))){
-        
-    }
-    else{
-        
-    }
-    
-}
