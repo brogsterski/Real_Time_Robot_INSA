@@ -64,9 +64,13 @@ private:
     /**********************************************************************/
     ComMonitor monitor;
     ComRobot robot;
+    Camera * camera = new Camera(sm, 10);
     int robotStarted = 0;
     int move = MESSAGE_ROBOT_STOP;
-    int battery_var;
+    int battery_var = 0;
+    int find_arene = 0;
+    int is_arene_ok = 0;
+    Arena arene;
     
     /**********************************************************************/
     /* Tasks                                                              */
@@ -78,6 +82,9 @@ private:
     RT_TASK th_startRobot;
     RT_TASK th_move;
     RT_TASK th_battery;
+    RT_TASK th_camera_p;
+    RT_TASK th_camera_a;
+
     
     /**********************************************************************/
     /* Mutex                                                              */
@@ -86,7 +93,10 @@ private:
     RT_MUTEX mutex_robot;
     RT_MUTEX mutex_robotStarted;
     RT_MUTEX mutex_move;
-
+    RT_MUTEX mutex_camera;
+    RT_MUTEX mutex_batterie;
+    RT_MUTEX mutex_arene;
+    
     /**********************************************************************/
     /* Semaphores                                                         */
     /**********************************************************************/
@@ -134,7 +144,20 @@ private:
      */
     void MoveTask(void *arg);
     
+    /**
+     * @brief Thread pour MàJ et afffichage du niveau de batterie.
+     */
     void GetBattery(void *arg);
+    
+    /**
+     * @brief Thread pour la partie périodique de la caméra (ie. envoie des images ttes les 100ms)
+     */
+    void Camera_p(void *arg);
+    
+    /**
+     * @brief Thread pour la partie apériodique de la caméra (ie. detection de l'arène)
+     */
+    void Camera_a(void *arg);
     
     /**********************************************************************/
     /* Queue services                                                     */
