@@ -28,7 +28,7 @@
 
 int main(int argc, char **argv) {
     Tasks tasks;
-    
+
     //Lock the memory to avoid memory swapping for this program
     mlockall(MCL_CURRENT | MCL_FUTURE);
 
