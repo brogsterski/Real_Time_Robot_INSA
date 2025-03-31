@@ -342,7 +342,7 @@ void Tasks::ReceiveFromMonTask(void *arg) {
         }
         else if(msgRcv->CompareID(MESSAGE_CAM_ASK_ARENA)) {
             rt_mutex_acquire(&mutex_arene, TM_INFINITE);
-            //cout << "On recoit le message ASK ARENA" <<endl << flush;
+            cout << "On recoit le message ASK ARENA" <<endl << flush;
             is_arene_ok = 0;
             find_arene = 1;
             rt_mutex_release(&mutex_arene);
@@ -562,17 +562,6 @@ void Tasks::Camera_p(void *args){
                 img->DrawArena(arene);
             }
             
-            if(find_arene == 1){
-                cout << "on veut dessiner"  << endl << flush;
-                rt_mutex_acquire(&mutex_arene, TM_INFINITE);
-                //arene = img->SearchArena();
-
-                if(!(arene.IsEmpty())){
-                    img->DrawArena(arene);
-                }
-                delete(img);
-                rt_mutex_release(&mutex_arene);
-            }
             rt_mutex_release(&mutex_arene);          
             
             WriteInQueue(&q_messageToMon, new MessageImg(MESSAGE_CAM_IMAGE, img));
@@ -590,30 +579,33 @@ void Tasks::Camera_a(void *args){
     rt_sem_p(&sem_barrier, TM_INFINITE);
     
     /**************************************************************************************/
-    /* The task Camera_a starts here                                                    */
+    /* The task Camera_a starts here                                                      */
     /**************************************************************************************/
     
-    rt_mutex_acquire(&mutex_arene, TM_INFINITE);
-    
-    if(find_arene == 1){
-        cout << "on veut dessiner"  << endl << flush;
-        rt_mutex_acquire(&mutex_camera, TM_INFINITE);
-        if(camera -> IsOpen()){
-            //Prendre photo avec la camera et l'envoyer au monitor
-            Img * imgArene = new Img(camera -> Grab());
-            rt_mutex_acquire(&mutex_arene, TM_INFINITE);
-            arene = imgArene->SearchArena();
-            
-            if(arene.IsEmpty()){
-                WriteInQueue(&q_messageToMon, new Message(MESSAGE_ANSWER_NACK));
+    //while (1){
+        rt_mutex_acquire(&mutex_arene, TM_INFINITE);
+        if(find_arene == 1){
+            cout << "le IFFFFFFFFFFFFFFFFFFFFFFFF"  << endl << flush;
+            cout << "on veut dessiner"  << endl << flush;
+            rt_mutex_acquire(&mutex_camera, TM_INFINITE);
+            if(camera -> IsOpen()){
+                //Prendre photo avec la camera et l'envoyer au monitor
+                Img * img = new Img(camera -> Grab());
+                arene = img->SearchArena();
+                if(arene.IsEmpty()){
+                    WriteInQueue(&q_messageToMon, new Message(MESSAGE_ANSWER_NACK));
+                }
+                else{
+                    img->DrawArena(arene);
+                    WriteInQueue(&q_messageToMon, new MessageImg(MESSAGE_CAM_IMAGE, img));
+                }
             }
+
+            rt_mutex_release(&mutex_camera);
             
-            delete(imgArene);
-            rt_mutex_release(&mutex_arene);
         }
+        rt_mutex_release(&mutex_arene);
         
-        rt_mutex_release(&mutex_camera);
-        
-    }
-    rt_mutex_release(&mutex_arene);
+    //}
 }
+    
