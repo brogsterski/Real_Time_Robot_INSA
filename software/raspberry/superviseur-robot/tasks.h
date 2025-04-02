@@ -83,7 +83,6 @@ private:
     RT_TASK th_move;
     RT_TASK th_battery;
     RT_TASK th_camera_p;
-    RT_TASK th_camera_a;
 
     
     /**********************************************************************/
@@ -179,4 +178,3 @@ private:
 };
 
 #endif // __TASKS_H__ 
-
