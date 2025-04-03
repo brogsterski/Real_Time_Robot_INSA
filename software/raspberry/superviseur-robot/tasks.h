@@ -70,6 +70,7 @@ private:
     int battery_var = 0;
     int find_arene = 0;
     int is_arene_ok = 0;
+    int rech_pos = 0;
     Arena arene;
     
     /**********************************************************************/
@@ -95,6 +96,7 @@ private:
     RT_MUTEX mutex_camera;
     RT_MUTEX mutex_batterie;
     RT_MUTEX mutex_arene;
+    RT_MUTEX mutex_position;
     
     /**********************************************************************/
     /* Semaphores                                                         */
