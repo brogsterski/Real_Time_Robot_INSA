@@ -25,9 +25,8 @@
 #define PRIORITY_TSENDTOMON 22
 #define PRIORITY_TRECEIVEFROMMON 25
 #define PRIORITY_TSTARTROBOT 20
-#define PRIORITY_TCAMERA 21
+#define PRIORITY_TCAMERA 26
 #define PRIORITY_TBATTERY 23
-#define PRIORITY_TCAMERA_A 15
 
 
 /*
@@ -81,6 +80,14 @@ void Tasks::Init() {
         exit(EXIT_FAILURE);
     }
     if (err = rt_mutex_create(&mutex_camera, NULL)){
+        cerr << "Error mutex create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_mutex_create(&mutex_arene, NULL)){
+        cerr << "Error mutex create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_mutex_create(&mutex_position, NULL)){
         cerr << "Error mutex create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
@@ -315,8 +322,15 @@ void Tasks::ReceiveFromMonTask(void *arg) {
             }
             else{
                 camera_opened = camera->Open();
+                rt_mutex_acquire(&mutex_arene, TM_INFINITE); //on initialise correctement nos variables globales
+                find_arene = 0;
+                rt_mutex_release(&mutex_arene);
+                rt_mutex_acquire(&mutex_position, TM_INFINITE);
+                rech_pos =0;
+                rt_mutex_release(&mutex_position);
             }
             rt_mutex_release(&mutex_camera);
+            
             
             if(!camera_opened){
                 
@@ -334,9 +348,7 @@ void Tasks::ReceiveFromMonTask(void *arg) {
                 camera->Close();
             }
             rt_mutex_release(&mutex_camera);
-            rt_mutex_acquire(&mutex_arene, TM_INFINITE);
-            find_arene = 0;
-            rt_mutex_release(&mutex_arene);
+            
             WriteInQueue(&q_messageToMon, new Message(MESSAGE_ANSWER_ACK));
         }
         else if(msgRcv->CompareID(MESSAGE_CAM_ASK_ARENA)) {
@@ -348,6 +360,7 @@ void Tasks::ReceiveFromMonTask(void *arg) {
         }
         else if(msgRcv->CompareID(MESSAGE_CAM_ARENA_CONFIRM)) {
             rt_mutex_acquire(&mutex_arene, TM_INFINITE);
+            cout << "ARENE OKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK" <<endl << flush;
             is_arene_ok = 1;
             find_arene = 0;
             rt_mutex_release(&mutex_arene);
@@ -358,6 +371,19 @@ void Tasks::ReceiveFromMonTask(void *arg) {
             find_arene = 0;
             rt_mutex_release(&mutex_arene);
         }
+        else if(msgRcv->CompareID(MESSAGE_CAM_POSITION_COMPUTE_START)) {
+            rt_mutex_acquire(&mutex_position, TM_INFINITE);
+            cout << "POSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS" <<endl << flush;
+            rech_pos = 1;
+            rt_mutex_release(&mutex_position);
+        }
+        else if(msgRcv->CompareID(MESSAGE_CAM_POSITION_COMPUTE_STOP)) {
+            rt_mutex_acquire(&mutex_position, TM_INFINITE);
+            cout << "STOOOOOOPPPPPPPPPPPPPPPPP" <<endl << flush;
+            rech_pos = 0;
+            rt_mutex_release(&mutex_position);
+        }
+        
         delete(msgRcv); // mus be deleted manually, no consumer
     }
 }
@@ -537,6 +563,7 @@ void Tasks::Camera_p(void *args){
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     //camera->Close();
     // Synchronization barrier (waiting that all tasks are starting)
+    std::list<Position> pos_robot;
     rt_sem_p(&sem_barrier, TM_INFINITE);
     
     /**************************************************************************************/
@@ -554,8 +581,8 @@ void Tasks::Camera_p(void *args){
             //cout << "On prend une image";
             //Prendre photo avec la camera et l'envoyer au monitor
             rt_mutex_acquire(&mutex_arene, TM_INFINITE);
-            
-            if(find_arene == 0){
+            rt_mutex_acquire(&mutex_position, TM_INFINITE);
+            if(find_arene == 0 && rech_pos == 0){
                 Img * img = new Img(camera -> Grab());
 
                 rt_mutex_acquire(&mutex_arene, TM_INFINITE);
@@ -569,7 +596,7 @@ void Tasks::Camera_p(void *args){
                 WriteInQueue(&q_messageToMon, new MessageImg(MESSAGE_CAM_IMAGE, img));
                
                 delete(img);
-            }else if (find_arene == 1){
+            }else if (find_arene == 1 && rech_pos == 0){
                 cout << "on veut dessiner !!"  << endl << flush;
                 Img * img_arene = new Img(camera -> Grab());
                 arene = img_arene->SearchArena();
@@ -580,7 +607,31 @@ void Tasks::Camera_p(void *args){
                 img_arene->DrawArena(arene);
                 WriteInQueue(&q_messageToMon, new MessageImg(MESSAGE_CAM_IMAGE, img_arene));
                 delete(img_arene);
+            }else if (rech_pos == 1){
+                cout << "ARENAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"  << endl << flush;
+                Img * img_robot = new Img(camera -> Grab());
+                if (!(arene.IsEmpty())){
+                    cout << "recherche positionnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"  << endl << flush;
+                    pos_robot = img_robot -> SearchRobot(arene);
+                    if (!(pos_robot.empty())){
+                        img_robot -> DrawAllRobots(pos_robot);
+                        for (Position pos : pos_robot){
+                          if (pos.robotId == 31){
+                            WriteInQueue(&q_messageToMon, new MessagePosition(MESSAGE_CAM_POSITION, pos));
+                          }
+                        }
+                    }
+                    else {
+                        Position pos;
+                        pos.center=cv::Point2f(-1.0,-1.0);
+                        pos.direction = cv::Point2f(-1.0,-1.0);
+                        WriteInQueue(&q_messageToMon, new MessagePosition(MESSAGE_CAM_POSITION, pos));
+                    }
+                }
+                WriteInQueue(&q_messageToMon, new MessageImg(MESSAGE_CAM_IMAGE, img_robot));
+                delete(img_robot);
             }
+            rt_mutex_release(&mutex_position);
             rt_mutex_release(&mutex_arene);
         }
         rt_mutex_release(&mutex_camera);
